@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ELITE PRIVATE | OSINT & Termux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --fg: #e0e0e0;
+      --muted: #aaa;
+      --card-bg: #1a1a1a;
+      --border: #333;
+      --shadow: rgba(0,0,0,0.5);
+      --transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .light-theme {
+      --bg: #f8f8f8;
+      --fg: #222;
+      --muted: #666;
+      --card-bg: #ffffff;
+      --border: #ddd;
+      --shadow: rgba(0,0,0,0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'IBM Plex Mono', 'Fira Code', 'Consolas', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      transition: var(--transition);
+    }
+
+    #grid-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 200%;      height: 200%;
+      background-image:
+        linear-gradient(rgba(60,60,60,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(60,60,60,0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+      transform: translateZ(0);
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    #snow {
+      pointer-events: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Главная иконка — ваш глобус (SVG) */
+    .main-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 25px;
+      animation: rotate-pulse 14s linear infinite;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.1));
+    }
+
+    @keyframes rotate-pulse {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.02); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    /* Надпись — переливается редко */
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 15px;
+      color: #c0c0c0;
+      letter-spacing: 1px;      text-shadow: 0 0 0 rgba(192,192,192,0);
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Персонаж — чёрный силуэт */
+    .character {
+      position: absolute;
+      top: 50%;
+      right: -60px;
+      width: 40px;
+      height: 60px;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.4s;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .character.enter {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .character.sitting {
+      transform: translate(0, -40px) scale(0.9);
+    }
+
+    .character .arm {
+      transform-origin: 10px 20px;
+      transition: transform 0.4s ease;
+    }
+
+    .character.wave .arm {
+      animation: wave 0.8s ease-in-out forwards;
+    }
+
+    .character .leg-left,
+    .character .leg-right {
+      transform-origin: 20px 45px;
+    }
+
+    .character.bob-legs .leg-left {
+      animation: bob 1.2s infinite ease-in-out;
+    }
+
+    .character.bob-legs .leg-right {
+      animation: bob 1.2s infinite ease-in-out 0.3s;
+    }
+    @keyframes wave {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(-25deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-8deg); }
+    }
+
+    .tagline {
+      font-size: 1.2rem;
+      margin-bottom: 35px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .emph {
+      font-weight: 600;
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-decoration-thickness: 1px;
+    }
+
+    .theme-toggle {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: var(--transition);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;      gap: 10px;
+      margin: 12px 8px;
+      padding: 14px 28px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-decoration: none;
+      border-radius: 10px;
+      transition: var(--transition);
+      color: var(--fg);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px var(--shadow);
+      position: relative;
+      overflow: hidden;
+      min-width: 200px;
+    }
+
+    .btn svg {
+      stroke: currentColor;
+      stroke-width: 1.8;
+      width: 22px;
+      height: 22px;
+      transition: var(--transition);
+    }
+
+    .btn:hover svg {
+      animation: pulse-rotate 1.2s infinite alternate ease-in-out;
+    }
+
+    @keyframes pulse-rotate {
+      0% { transform: rotate(0deg) scale(1); }
+      100% { transform: rotate(2deg) scale(1.05); }
+    }
+
+    .btn:active {
+      transform: scale(0.94);
+      box-shadow: 0 2px 6px var(--shadow);
+    }
+
+    footer {
+      margin-top: 50px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .snow-control {
+      margin-top: 30px;
+      padding: 15px;
+      background: var(--card-bg);
+      border-radius: 10px;      border: 1px solid var(--border);
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    @media (max-width: 600px) {
+      h1 { font-size: 2.2rem; }
+      .tagline { font-size: 1.05rem; }
+      .btn { padding: 12px 20px; font-size: 1rem; margin: 8px 4px; min-width: 160px; }
+      .theme-toggle { top: 15px; right: 15px; width: 36px; height: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Фоновая сетка -->
+  <div id="grid-bg"></div>
+
+  <!-- Переключатель темы -->
+  <div class="theme-toggle" id="themeToggle">🌓</div>
+
+  <!-- Снег -->
+  <canvas id="snow"></canvas>
+
+  <div class="container">
+    <!-- Ваша иконка глобуса — вверху -->
+    <svg class="main-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="2"/>
+      <line x1="20" y1="50" x2="80" y2="50" stroke="currentColor" stroke-width="2"/>
+      <line x1="50" y1="20" x2="50" y2="80" stroke="currentColor" stroke-width="2"/>
+      <line x1="30" y1="30" x2="70" y2="70" stroke="currentColor" stroke-width="2"/>
+      <line x1="30" y1="70" x2="70" y2="30" stroke="currentColor" stroke-width="2"/>
+    </svg>
+
+    <!-- Надпись -->
+    <h1 id="title">ELITE PRIVATE</h1>
+
+    <!-- Персонаж — чёрный силуэт -->
+    <svg class="character" id="character" viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+      <!-- Тело — сплошной чёрный -->
+      <rect x="12" y="15" width="16" height="25" fill="#000" rx="3"/>
+      <!-- Голова — чёрный круг -->
+      <circle cx="20" cy="10" r="8" fill="#000"/>
+      <!-- Руки — чёрные прямоугольники -->
+      <rect x="6" y="22" width="12" height="2" fill="#000" rx="1"/>
+      <rect x="22" y="22" width="12" height="2" fill="#000" rx="1"/>
+      <!-- Ноги — чёрные -->
+      <rect x="16" y="40" width="3" height="18" fill="#000" rx="1"/>
+      <rect x="21" y="40" width="3" height="18" fill="#000" rx="1"/>    </svg>
+
+    <p class="tagline">
+      Эксклюзивное закрытое сообщество для тех, кто хочет освоить <span class="emph">OSINT</span>, <span class="emph">Termux</span>, автоматизацию и цифровую безопасность на продвинутом уровне.
+    </p>
+
+    <a href="https://t.me/eliteprivate_bot" target="_blank" rel="noopener noreferrer" class="btn">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      Приобрести приват
+    </a>
+
+    <a href="https://t.me/darktermuxp" target="_blank" rel="noopener noreferrer" class="btn">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+        <circle cx="12" cy="9" r="2"/>
+        <path d="M12 16c-2.5 0-4-1.5-4-4"/>
+        <path d="M12 16c2.5 0 4-1.5 4-4"/>
+      </svg>
+      Канал
+    </a>
+
+    <a href="https://t.me/kashabemad" target="_blank" rel="noopener noreferrer" class="btn">
+      <svg viewBox="0 0 24 24">
+        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14c0 2-1 4-1 4h2s-1-2-1-4"/>
+        <path d="M19 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      Связаться с основателем
+    </a>
+
+    <div class="snow-control">
+      <label for="snowSlider">Интенсивность снега: <span id="snowValue">120</span></label>
+      <input type="range" id="snowSlider" min="20" max="300" value="120">
+    </div>
+
+    <footer>
+      © 2026 ELITE PRIVATE — Только для избранных.
+    </footer>
+  </div>
+
+  <script>
+    // === ТЕМА ===
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    let currentTheme = localStorage.getItem('theme') || 'dark';
+    if (currentTheme === 'light') {      body.classList.add('light-theme');
+      themeToggle.textContent = '🌙';
+    } else {
+      themeToggle.textContent = '🌓';
+    }
+    themeToggle.addEventListener('click', () => {
+      const isLight = body.classList.contains('light-theme');
+      body.classList.toggle('light-theme');
+      currentTheme = isLight ? 'dark' : 'light';
+      localStorage.setItem('theme', currentTheme);
+      themeToggle.textContent = currentTheme === 'light' ? '🌙' : '🌓';
+    });
+
+    // === СНЕГ ===
+    const canvas = document.getElementById('snow');
+    const ctx = canvas.getContext('2d');
+    let flakes = [];
+    let flakeCount = parseInt(localStorage.getItem('snowIntensity')) || 120;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    class Flake {
+      constructor() {
+        this.reset();
+        this.size = Math.random() * 3 + 1;
+        this.speed = Math.random() * 2 + 0.5;
+        this.wind = Math.random() * 1 - 0.5;
+      }
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * -canvas.height;
+      }
+      update() {
+        this.y += this.speed;
+        this.x += this.wind;
+        if (this.y > canvas.height) this.reset();
+      }
+      draw() {
+        ctx.fillStyle = body.classList.contains('light-theme') 
+          ? 'rgba(0,0,0,0.6)' 
+          : 'rgba(255,255,255,0.8)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    function initSnow(count) {
+      flakes = [];
+      for (let i = 0; i < count; i++) {
+        flakes.push(new Flake());
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      flakes.forEach(flake => {
+        flake.update();
+        flake.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+
+    const snowSlider = document.getElementById('snowSlider');
+    const snowValue = document.getElementById('snowValue');
+    snowSlider.value = flakeCount;
+    snowValue.textContent = flakeCount;
+    snowSlider.addEventListener('input', () => {
+      flakeCount = parseInt(snowSlider.value);
+      snowValue.textContent = flakeCount;
+      localStorage.setItem('snowIntensity', flakeCount);
+      initSnow(flakeCount);
+    });
+
+    // === АНИМАЦИЯ ПЕРЕЛИВА НАДПИСИ ===
+    const title = document.getElementById('title');
+    let glowActive = false;
+
+    function pulseGlow() {
+      if (glowActive) return;
+      glowActive = true;
+      title.style.textShadow = '0 0 12px rgba(192,192,192,0.7), 0 0 25px rgba(128,128,128,0.4)';
+      setTimeout(() => {
+        title.style.textShadow = '0 0 0 rgba(192,192,192,0)';
+        glowActive = false;
+      }, 1800);
+    }
+
+    // Раз в 8–12 сек — случайно
+    setInterval(() => {
+      if (Math.random() > 0.3) pulseGlow();
+    }, 8000 + Math.random() * 4000);
+
+    // === ПЕРСОНАЖ ===
+    const character = document.getElementById('character');
+
+    // 1. Появление заголовка (уже есть по умолчанию)    // 2. Через 1.5с — персонаж запрыгивает
+    setTimeout(() => {
+      character.classList.add('enter');
+    }, 1500);
+
+    // 3. Через 2.2с — садится, махает, болтает ногами
+    setTimeout(() => {
+      character.classList.add('sitting');
+      character.classList.add('wave');
+      setTimeout(() => {
+        character.classList.remove('wave');
+        character.classList.add('bob-legs');
+        // Через 15 сек — второй мах
+        setTimeout(() => {
+          character.classList.add('wave');
+          setTimeout(() => {
+            character.classList.remove('wave');
+          }, 800);
+        }, 15000);
+      }, 800);
+    }, 2200);
+
+    // === СКРОЛЛ-ФОН ===
+    const gridBg = document.getElementById('grid-bg');
+    window.addEventListener('scroll', () => {
+      const scrollY = window.scrollY;
+      gridBg.style.transform = `translate(-${scrollY * 0.1}px, -${scrollY * 0.1}px)`;
+    });
+
+    // Запуск
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    initSnow(flakeCount);
+    animate();
+  </script>
+</body>
+</html>
